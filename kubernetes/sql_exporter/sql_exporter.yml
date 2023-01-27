@@ -1,0 +1,158 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sql-exporter-server-conf
+  labels:
+    name: sql-exporter-server-conf
+  namespace: monitoring
+data:
+  sql_exporter.yml: |-
+    # Global settings and defaults.
+    global:
+      # Subtracted from Prometheus' scrape_timeout to give us some headroom and prevent Prometheus from
+      # timing out first.
+      scrape_timeout_offset: 500ms
+      # Minimum interval between collector runs: by default (0s) collectors are executed on every scrape.
+      min_interval: 0s
+      # Maximum number of open connections to any one target. Metric queries will run concurrently on
+      # multiple connections.
+      max_connections: 3
+      # Maximum number of idle connections to any one target.
+      max_idle_connections: 3
+      # Maximum amount of time a connection may be reused to any one target. Infinite by default.
+      max_connection_lifetime: 10m
+
+    # The target to monitor and the list of collectors to execute on it.
+    target:
+      # Data source name always has a URI schema that matches the driver name. In some cases (e.g. MySQL)
+      # the schema gets dropped or replaced to match the driver expected DSN format.
+      # See https://github.com/denisenkom/go-mssqldb#the-connection-string-can-be-specified-in-one-of-three-formats for acceptable DSN formatting.
+      # URL is the preferred format.
+      data_source_name: 'sqlserver://user:pass@dbserver:1433'
+      # data_source_name: 'sqlserver://user:pass@dbserver:1433?database=db_name'
+
+      # Collectors (referenced by name) to execute on the target.
+      # collectors: [test_collector]
+      # collectors: [grafana-db]
+      collectors:
+        - test_collector
+        - grafana-db
+
+    # Collector definition files.
+    collector_files:
+      - "*.collector.yml"
+  
+  testcollector.collector.yml: |-
+    # This collector will be referenced in the exporter configuration as `test_collector`.
+    collector_name: test_collector
+
+    # A Prometheus metric with (optional) additional labels, value and labels populated from one query.
+    metrics:
+      - metric_name: num_of_players
+        type: gauge
+        help: 'Time when prices for a market were last updated.'
+        key_labels:
+          # Populated from the `market` column of each row.
+          # - Market
+        static_labels:
+          # Arbitrary key/value pair
+          # portfolio: income
+        values: [NumOfPlayers]
+        query: |
+          SELECT count(*) AS NumOfPlayers
+          FROM Player
+
+  grafana-db.collector.yml: |-
+    # This collector will be referenced in the exporter configuration as `grafana-db`.
+    collector_name: grafana-db
+
+    # A Prometheus metric with (optional) additional labels, value and labels populated from one query.
+    metrics:
+      - metric_name: grafana_db_recent_login
+        type: gauge
+        help: 'Time when prices for a market were last updated.'
+        key_labels:
+          # Populated from the `market` column of each row.
+          # - Market
+        static_labels:
+          # Arbitrary key/value pair
+          # portfolio: income
+        values: [TimeFromLastRecord]
+        query: |
+          SELECT datediff(minute, max(InsertDateTime), getutcdate()) AS TimeFromLastRecord
+          FROM users.login_history
+      
+      - metric_name: grafana_db_total_users
+        type: gauge
+        help: 'Time when prices for a market were last updated.'
+        key_labels:
+          # Populated from the `market` column of each row.
+          # - Market
+        static_labels:
+          # Arbitrary key/value pair
+          # portfolio: income
+        values: [TotalRegisteredUsers]
+        query: |
+          SELECT count(*) AS TotalRegisteredUsers
+          FROM users.user
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sql-exporter
+  namespace: monitoring
+  labels:
+    app: sql-exporter-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sql-exporter-server
+  template:
+    metadata:
+      labels:
+        app: sql-exporter-server
+    spec:
+      containers:
+        - name: sql-exporter
+          image: burningalchemist/sql_exporter:0.9.2
+          env:
+          - name: SQLEXPORTER_TARGET_DSN
+            valueFrom:
+              secretKeyRef:
+                name: sql-exporter-dsn
+                key: DSN1
+          - name: SQLEXPORTER_CONFIG
+            value: "/sql-exporter/sql_exporter.yml"
+          ports:
+            - containerPort: 9399
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 250M
+            limits:
+              cpu: 250m
+              memory: 500M
+          volumeMounts:
+            - name: sql-exporter-config-volume
+              mountPath: /sql-exporter
+      volumes:
+        - name: sql-exporter-config-volume
+          configMap:
+            defaultMode: 420
+            name: sql-exporter-server-conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sql-exporter-service
+  namespace: monitoring
+spec:
+  selector:
+    app: sql-exporter-server
+  type: NodePort
+  ports:
+    - port: 9399
+      targetPort: 9399
+      nodePort: 30011
