@@ -130,11 +130,6 @@ spec:
         - name: sql-exporter
           image: burningalchemist/sql_exporter:0.9.2
           env:
-          - name: SQLEXPORTER_TARGET_DSN
-            valueFrom:
-              secretKeyRef:
-                name: sql-exporter-dsn
-                key: DSN1
           - name: DB_USERNAME
             valueFrom:
               secretKeyRef:
