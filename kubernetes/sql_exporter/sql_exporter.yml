@@ -117,8 +117,6 @@ spec:
         - name: sql-exporter
           image: burningalchemist/sql_exporter:0.9.2
           env:
-          - name: SQLEXPORTER_TARGET_DSN
-            value: "sqlserver://$(DB_USERNAME):$(DB_PASSWORD)@$(DB_SERVER):1433?database=$(DB_NAME)"
           - name: DB_USERNAME
             valueFrom:
               secretKeyRef:
@@ -139,6 +137,8 @@ spec:
               secretKeyRef:
                 name: db-connection
                 key: db_name
+          - name: SQLEXPORTER_TARGET_DSN
+            value: "sqlserver://$(DB_USERNAME):$(DB_PASSWORD)@$(DB_SERVER):1433?database=$(DB_NAME)"
           - name: SQLEXPORTER_CONFIG
             value: "/sql-exporter/sql_exporter.yml"
           ports:
