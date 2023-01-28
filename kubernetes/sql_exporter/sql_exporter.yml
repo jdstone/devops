@@ -117,16 +117,6 @@ spec:
         - name: sql-exporter
           image: burningalchemist/sql_exporter:0.9.2
           env:
-          - name: DB_USERNAME
-            valueFrom:
-              secretKeyRef:
-                name: db-connection
-                key: db_username
-          - name: DB_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: db-connection
-                key: db_password
           - name: DB_SERVER
             valueFrom:
               secretKeyRef:
@@ -137,8 +127,13 @@ spec:
               secretKeyRef:
                 name: db-connection
                 key: db_name
+          - name: SQL_IDENTITY_CLIENT_ID # client id of Azure managed identity (user-assigned)
+            valueFrom:
+              secretKeyRef:
+                name: db-connection
+                key: sql_identity_client_id
           - name: SQLEXPORTER_TARGET_DSN
-            value: "sqlserver://$(DB_USERNAME):$(DB_PASSWORD)@$(DB_SERVER):1433?database=$(DB_NAME)"
+            value: "sqlserver://$(DB_SERVER):1433?database=$(DB_NAME)&fedauth=ActiveDirectoryManagedIdentity&user id=$(SQL_IDENTITY_CLIENT_ID)"
           - name: SQLEXPORTER_CONFIG
             value: "/sql-exporter/sql_exporter.yml"
           ports:
