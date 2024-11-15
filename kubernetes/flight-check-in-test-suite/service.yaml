@@ -1,0 +1,13 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: flight-test-suite
+  namespace: default
+  labels:
+    app: flight-test-suite
+spec:
+  selector:
+    app: flight-test-suite
+  ports:
+  - port: 8081
+  type: ClusterIP

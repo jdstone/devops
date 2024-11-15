@@ -1,0 +1,37 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: flight-test-suite
+  namespace: default
+  labels:
+    app: flight-test-suite
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flight-test-suite
+  template:
+    metadata:
+      labels:
+        app: flight-test-suite
+    spec:
+      containers:
+      - image: jdstone/flight-check-in-test-suite:0.1.0
+        name: flight-check-in-test-suite
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+          limits:
+            cpu: 250m
+            memory: 250Mi
+        ports:
+        - containerPort: 8081
+        readinessProbe:
+          httpGet:
+            path: /health_check
+            port: 8081
+          initialDelaySeconds: 10
+        envFrom:
+        - secretRef:
+            name: flight-test-suite-secret-key
