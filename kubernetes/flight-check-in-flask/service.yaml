@@ -1,0 +1,13 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: flight-flask
+  namespace: default
+  labels:
+    app: flight-flask
+spec:
+  selector:
+    app: flight-flask
+  ports:
+  - port: 8080
+  type: ClusterIP
