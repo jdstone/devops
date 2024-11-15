@@ -1,0 +1,57 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: flight-flask
+  namespace: default
+  labels:
+    app: flight-flask
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flight-flask
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: flight-flask
+    spec:
+      containers:
+      - image: jdstone/flight-check-in-flask:0.1.0
+        name: flight-check-in-flask
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+          limits:
+            cpu: 250m
+            memory: 250Mi
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 10
+        envFrom:
+        - secretRef:
+            name: flight-flask-secret-key
+        env:
+        - name: SW_RV_API_URL
+          value: "http://flight-test-suite:8081/review"
+        - name: SW_CM_API_URL
+          value: "http://flight-test-suite:8081/confirm"
+        - name: SCHEDULER_JOBSTORE_FILE
+          value: /data/job_scheduler.sqlite
+        - name: GUNICORN_IP
+          value: "0.0.0.0"
+        - name: GUNICORN_PORT
+          value: "8080"
+        volumeMounts:
+          - name: flight-flask-pv
+            mountPath: /data
+      volumes:
+        - name: flight-flask-pv
+          persistentVolumeClaim:
+            claimName: flight-flask-pvc
